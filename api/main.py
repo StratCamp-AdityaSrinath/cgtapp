@@ -130,10 +130,13 @@ def run_full_simulation(drug_keys_to_include, sample_size, pp_deductible, agg_de
         "incidence": calculate_stats(results_df, 'pmpm_inc', lambdas_inc.sum()),
     }
 
-# This is the main API handler function that Vercel will run.
-# It now uses the 'app' variable directly, which Vercel expects.
-@app.route('/', methods=['POST'])
-def handler():
+# --- CORRECTED FLASK HANDLER ---
+# Vercel's environment expects the Flask app object itself to handle the request.
+# By defining the logic inside a function decorated with the app.route,
+# we ensure it's correctly registered as the handler for the root path.
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>', methods=['POST'])
+def catch_all(path):
     # 1. Get the user's inputs from the incoming request
     data = request.get_json()
 
