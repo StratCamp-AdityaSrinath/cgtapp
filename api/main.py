@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from io import StringIO
 
-# The Flask app instance
+# The Flask app instance. Vercel's handler will look for this 'app' object.
 app = Flask(__name__)
 CORS(app) # This enables your frontend to call the backend
 
@@ -131,6 +131,7 @@ def run_full_simulation(drug_keys_to_include, sample_size, pp_deductible, agg_de
     }
 
 # This is the main API handler function that Vercel will run.
+# It now uses the 'app' variable directly, which Vercel expects.
 @app.route('/', methods=['POST'])
 def handler():
     # 1. Get the user's inputs from the incoming request
@@ -158,6 +159,3 @@ def handler():
 
     # 4. Return ONLY the final results as JSON
     return jsonify(results)
-
-# NOTE: The if __name__ == "__main__": block has been removed
-# as it is not needed for Vercel deployment and can sometimes cause issues.
