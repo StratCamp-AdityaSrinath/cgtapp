@@ -2,10 +2,13 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
 import numpy as np
-import json
 from io import StringIO
 
-# --- DATA: Corrected with exact values from the user's original CSV file ---
+# The Flask app instance
+app = Flask(__name__)
+CORS(app) # This enables your frontend to call the backend
+
+# --- DATA: Your proprietary data remains secure on the backend ---
 DISEASE_DATA_STRING = """
 Key,Drug_IDs,Indication,LOA,Median_Age_Diagnosis,Median_Life_Expectancy,Age_Min,Age_Max,Segment,Incidence_2025,Prevalence_2025,Admin_Cost_2025
 1,Zolgensma,Spinal Muscular Atrophy,1.0,0,2,0,2,Total Population,0.00000015,0.0000003,2100000
@@ -117,8 +120,8 @@ def run_full_simulation(drug_keys_to_include, sample_size, pp_deductible, agg_de
             else:
                 return {"mean": "$0.0000", "cv": "0.0%", "max_mean": "0.0%"}
         
-        cv = (std / mean)
-        max_mean = (df[col_name].max() / mean)
+        cv = (std / mean) if mean > 0 else 0
+        max_mean = (df[col_name].max() / mean) if mean > 0 else 0
         return {"mean": f"${mean:.4f}", "cv": f"{cv:.1%}", "max_mean": f"{max_mean:.1%}"}
 
     return {
@@ -127,13 +130,9 @@ def run_full_simulation(drug_keys_to_include, sample_size, pp_deductible, agg_de
         "incidence": calculate_stats(results_df, 'pmpm_inc', lambdas_inc.sum()),
     }
 
-
-
-app = Flask(__name__)
-CORS(app) # This enables your frontend to call the backend
-
-@app.route('/run_simulation_api', methods=['POST'])
-def run_simulation_api():
+# This is the main API handler function that Vercel will run.
+@app.route('/', methods=['POST'])
+def handler():
     # 1. Get the user's inputs from the incoming request
     data = request.get_json()
 
@@ -160,6 +159,7 @@ def run_simulation_api():
     # 4. Return ONLY the final results as JSON
     return jsonify(results)
 
+# This part is only for running the server locally for testing.
+# Vercel does not use this when deployed.
 if __name__ == "__main__":
-    # This allows you to run the server locally for testing
     app.run(debug=True, port=5001)
