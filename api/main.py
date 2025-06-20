@@ -159,7 +159,5 @@ def handler():
     # 4. Return ONLY the final results as JSON
     return jsonify(results)
 
-# This part is only for running the server locally for testing.
-# Vercel does not use this when deployed.
-if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+# NOTE: The if __name__ == "__main__": block has been removed
+# as it is not needed for Vercel deployment and can sometimes cause issues.
