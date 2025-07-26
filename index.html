@@ -7,9 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
+        body { font-family: 'Inter', sans-serif; }
         .loader {
             border: 5px solid #f3f3f3;
             border-top: 5px solid #3498db;
@@ -22,32 +20,18 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        /* Tooltip styles */
-        .tooltip-container {
-            position: relative;
-            display: inline-block;
-        }
+        .tooltip-container { position: relative; display: inline-block; }
         .tooltip-text {
-            visibility: hidden;
-            width: 250px;
-            background-color: #555;
-            color: #fff;
-            text-align: center;
-            border-radius: 6px;
-            padding: 8px;
-            position: absolute;
-            z-index: 1;
-            bottom: 125%;
-            left: 50%;
-            margin-left: -125px; /* Use half of the width to center */
-            opacity: 0;
-            transition: opacity 0.3s;
-            font-size: 0.875rem;
-            font-weight: normal;
+            visibility: hidden; width: 250px; background-color: #555; color: #fff; text-align: center;
+            border-radius: 6px; padding: 8px; position: absolute; z-index: 1; bottom: 125%;
+            left: 50%; margin-left: -125px; opacity: 0; transition: opacity 0.3s;
+            font-size: 0.875rem; font-weight: normal;
         }
-        .tooltip-container:hover .tooltip-text {
-            visibility: visible;
-            opacity: 1;
+        .tooltip-container:hover .tooltip-text { visibility: visible; opacity: 1; }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
         }
     </style>
 </head>
@@ -62,65 +46,27 @@
         <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- Control Panel -->
             <div class="lg:col-span-1 bg-white p-6 rounded-2xl shadow-lg">
-                <h2 class="text-2xl font-bold mb-6 border-b pb-3">Simulation Controls</h2>
+                <h2 class="text-2xl font-bold mb-6 border-b pb-3">Global Simulation Controls</h2>
 
                 <div class="space-y-6">
                     <div>
                         <label for="sample_size" class="block text-lg font-semibold text-gray-700">Population Size (<span id="sample_size_value">100,000</span>)</label>
                         <input type="range" id="sample_size" min="2" max="8.52" step="0.01" value="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                     </div>
-
                     <div>
                         <label for="pp_deductible" class="block text-lg font-semibold text-gray-700">Per-Person Deductible ($<span id="pp_deductible_value">250,000</span>)</label>
                         <input type="range" id="pp_deductible" min="0" max="500000" step="50000" value="250000" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                     </div>
-
                     <div>
                         <label for="agg_deductible" class="block text-lg font-semibold text-gray-700">Aggregate Deductible ($<span id="agg_deductible_value">0</span>)</label>
                         <input type="range" id="agg_deductible" min="0" max="5000000" step="1000000" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                     </div>
-                    
-                    <div class="border-t pt-6 mt-6 border-gray-200">
-                         <h3 class="text-xl font-bold mb-4">Market Assumptions</h3>
-                         <div class="space-y-6">
-                            <div>
-                                <label for="elig_share" class="block text-lg font-semibold text-gray-700">
-                                    Eligible Share (<span id="elig_share_value">75</span>%)
-                                    <div class="tooltip-container ml-2">
-                                        <i class="fas fa-info-circle text-gray-400"></i>
-                                        <span class="tooltip-text">The percentage of patients with the disease who are clinically eligible to receive the therapy.</span>
-                                    </div>
-                                </label>
-                                <input type="range" id="elig_share" min="0" max="1" step="0.01" value="0.1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                            </div>
-                            <div>
-                                <label for="uptake" class="block text-lg font-semibold text-gray-700">
-                                    Uptake Rate (<span id="uptake_value">80</span>%)
-                                    <div class="tooltip-container ml-2">
-                                        <i class="fas fa-info-circle text-gray-400"></i>
-                                        <span class="tooltip-text">Of the patients who are eligible, the percentage that actually chooses to take the therapy.</span>
-                                    </div>
-                                </label>
-                                <input type="range" id="uptake" min="0" max="1" step="0.01" value="0.1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                            </div>
-                            <div>
-                                <label for="undiag_prev" class="block text-lg font-semibold text-gray-700">
-                                    Undiagnosed Multiplier (<span id="undiag_prev_value">10</span>%)
-                                    <div class="tooltip-container ml-2">
-                                        <i class="fas fa-info-circle text-gray-400"></i>
-                                        <span class="tooltip-text">A factor to increase the incident pool to account for prevalent patients who are newly diagnosed.</span>
-                                    </div>
-                                </label>
-                                <input type="range" id="undiag_prev" min="0" max="1" step="0.01" value="0.10" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                            </div>
-                         </div>
-                    </div>
                 </div>
 
                 <div class="mt-8">
-                    <h3 class="text-xl font-bold mb-4">Select Therapies to Include:</h3>
-                    <div id="drug-selection" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-                        <!-- Drug checkboxes will be populated by the setup function -->
+                    <h3 class="text-xl font-bold mb-4">Therapy-Specific Assumptions</h3>
+                    <div id="drug-selection" class="space-y-2 border rounded-lg p-2">
+                        <!-- Accordion for each drug will be populated by JavaScript -->
                     </div>
                 </div>
                 
@@ -128,7 +74,6 @@
                     <button id="run-simulation" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300 text-lg shadow-md">
                         <i class="fas fa-play mr-2"></i>Run Simulation
                     </button>
-                    <p class="text-sm text-gray-500 mt-3">Note: The simulation runs on a backend server and may take a moment.</p>
                 </div>
             </div>
 
@@ -151,64 +96,50 @@
     <script>
         // This function will run when the "Run Simulation" button is clicked
         async function handleRunSimulation() {
-            // Show the spinning loader and clear old results
             document.getElementById("loader-container").classList.remove("hidden");
             document.getElementById("results-summary").innerHTML = "";
 
-            // 1. Gather all inputs from the user interface
+            // 1. Gather GLOBAL inputs from the user interface
             const sample_size_log = parseFloat(document.getElementById("sample_size").value);
             const sample_size = parseInt(10**sample_size_log);
             const pp_deductible = parseInt(document.getElementById("pp_deductible").value);
             const agg_deductible = parseInt(document.getElementById("agg_deductible").value);
-            const elig_share = parseFloat(document.getElementById("elig_share").value);
-            const uptake = parseFloat(document.getElementById("uptake").value);
-            const undiag_prev = parseFloat(document.getElementById("undiag_prev").value);
             
-            const selected_drugs = [];
-            const drug_checkboxes = document.querySelectorAll('#drug-selection input[type="checkbox"]');
-            for (const checkbox of drug_checkboxes) {
+            // 2. Gather PER-THERAPY inputs
+            const therapy_assumptions = {};
+            const drug_divs = document.querySelectorAll('.drug-item');
+            drug_divs.forEach(div => {
+                const key = div.dataset.key;
+                const checkbox = div.querySelector('input[type="checkbox"]');
                 if (checkbox.checked) {
-                    selected_drugs.push(parseInt(checkbox.value));
+                    therapy_assumptions[key] = {
+                        elig_share: parseFloat(div.querySelector('.elig_share_slider').value),
+                        uptake: parseFloat(div.querySelector('.uptake_slider').value),
+                        undiag_prev: parseFloat(div.querySelector('.undiag_prev_slider').value)
+                    };
                 }
-            }
+            });
 
-            // Create the JSON payload to send to the backend
             const requestData = {
-                drug_keys: selected_drugs,
                 sample_size: sample_size,
                 pp_deductible: pp_deductible,
                 agg_deductible: agg_deductible,
-                elig_share: elig_share,
-                uptake: uptake,
-                undiag_prev: undiag_prev
+                therapy_assumptions: therapy_assumptions 
             };
 
             try {
-                // 2. Send the inputs to your running Python backend API
-                const response = await fetch('https://cgtapp.vercel.app/api/main', {
+                const response = await fetch('https://cgtapp.vercel.app/api/main', { // Replace with your Vercel URL
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(requestData)
                 });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                // 3. Receive the results back from the backend
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const results = await response.json();
-
-                // 4. Display the results in the table
                 displayResults(results);
-
             } catch (error) {
-                // Handle errors (e.g., if the Python server isn't running)
                 const resultsDiv = document.getElementById("results-summary");
-                resultsDiv.innerHTML = `<p class="text-red-600 font-bold">Error communicating with the simulation server. Is the Python server running in your terminal?</p><p class="text-sm text-gray-500 mt-2">${error}</p>`;
+                resultsDiv.innerHTML = `<p class="text-red-600 font-bold">Error communicating with the simulation server. Is the Python server running?</p><p class="text-sm text-gray-500 mt-2">${error}</p>`;
             } finally {
-                // Hide the spinning loader
                 document.getElementById("loader-container").classList.add("hidden");
             }
         }
@@ -219,7 +150,6 @@
                 resultsDiv.innerHTML = `<p class="text-red-500 font-bold">${results.error}</p>`;
                 return;
             }
-
             resultsDiv.innerHTML = `
                 <div class="overflow-x-auto">
                     <table class="min-w-full bg-white border border-gray-200">
@@ -256,12 +186,9 @@
             `;
         }
 
-        // This function sets up all the interactive elements on the page
         function setupFrontend() {
-            // Attach the handleRunSimulation function to the button click
             document.getElementById("run-simulation").addEventListener("click", handleRunSimulation);
 
-            // This part dynamically creates the drug selection checkboxes
             const drugData = [
                 {"Key":1,"Drug_IDs":"Zolgensma","Indication":"Spinal Muscular Atrophy"},
                 {"Key":2,"Drug_IDs":"Luxturna","Indication":"Inherited Retinal Disease"},
@@ -275,24 +202,61 @@
             ];
             const drugSelectionDiv = document.getElementById('drug-selection');
             drugData.forEach(row => {
-                const container = document.createElement('div');
-                container.className = 'flex items-center';
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.id = `drug_${row.Key}`;
-                checkbox.value = row.Key;
-                checkbox.className = 'h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500';
-                checkbox.checked = true;
-                const label = document.createElement('label');
-                label.htmlFor = `drug_${row.Key}`;
-                label.className = 'ml-3 block text-md font-medium text-gray-700';
-                label.innerText = `${row.Drug_IDs} (${row.Indication})`;
-                container.append(checkbox, label);
-                drugSelectionDiv.appendChild(container);
+                const drugItem = document.createElement('div');
+                drugItem.className = 'drug-item border-b border-gray-200';
+                drugItem.dataset.key = row.Key;
+
+                const header = document.createElement('div');
+                header.className = 'flex items-center p-2 cursor-pointer';
+                header.innerHTML = `
+                    <input type="checkbox" class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+                    <label class="ml-3 block text-md font-medium text-gray-700">${row.Drug_IDs} (${row.Indication})</label>
+                    <i class="fas fa-chevron-down ml-auto transition-transform"></i>
+                `;
+                
+                const content = document.createElement('div');
+                content.className = 'accordion-content p-4 bg-gray-50 rounded-b-lg';
+                content.innerHTML = `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600">Eligible Share (<span class="value-label">10</span>%)</label>
+                            <input type="range" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer elig_share_slider" min="0" max="1" step="0.01" value="0.10">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600">Uptake Rate (<span class="value-label">10</span>%)</label>
+                            <input type="range" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer uptake_slider" min="0" max="1" step="0.01" value="0.10">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600">Undiagnosed Multiplier (<span class="value-label">10</span>%)</label>
+                            <input type="range" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer undiag_prev_slider" min="0" max="1" step="0.01" value="0.10">
+                        </div>
+                    </div>
+                `;
+                
+                drugItem.append(header, content);
+                drugSelectionDiv.appendChild(drugItem);
+
+                header.addEventListener('click', (e) => {
+                    if(e.target.type === 'checkbox') return;
+                    const icon = header.querySelector('i');
+                    if (content.style.maxHeight) {
+                        content.style.maxHeight = null;
+                        icon.style.transform = 'rotate(0deg)';
+                    } else {
+                        content.style.maxHeight = content.scrollHeight + "px";
+                        icon.style.transform = 'rotate(180deg)';
+                    }
+                });
+
+                content.querySelectorAll('input[type="range"]').forEach(slider => {
+                    const label = slider.previousElementSibling.querySelector('.value-label');
+                    slider.addEventListener('input', () => {
+                        label.textContent = Math.round(slider.value * 100);
+                    });
+                });
             });
 
-            // This part makes the sliders update their text labels
-            const sliderIds = ["sample_size", "pp_deductible", "agg_deductible", "elig_share", "uptake", "undiag_prev"];
+            const sliderIds = ["sample_size", "pp_deductible", "agg_deductible"];
             sliderIds.forEach(sliderId => {
                 const slider = document.getElementById(sliderId);
                 const valueSpan = document.getElementById(`${sliderId}_value`);
@@ -301,18 +265,15 @@
                         const logVal = parseFloat(slider.value);
                         const linearVal = Math.pow(10, logVal);
                         valueSpan.innerText = `${Math.round(linearVal).toLocaleString()}`;
-                    } else if (slider.max === "1") {
-                        valueSpan.innerText = `${Math.round(slider.value * 100)}`;
                     } else {
                         valueSpan.innerText = `${parseInt(slider.value).toLocaleString()}`;
                     }
                 };
                 slider.addEventListener("input", updateLabel);
-                updateLabel(); // Set initial value
+                updateLabel();
             });
         }
 
-        // Run the setup function once the page has loaded
         document.addEventListener("DOMContentLoaded", setupFrontend);
     </script>
 </body>
