@@ -109,7 +109,7 @@
             const therapy_assumptions = {};
             const drug_divs = document.querySelectorAll('.drug-item');
             drug_divs.forEach(div => {
-                const key = div.dataset.key.toString();
+                const key = div.dataset.key;
                 const checkbox = div.querySelector('input[type="checkbox"]');
                 if (checkbox.checked) {
                     therapy_assumptions[key] = {
