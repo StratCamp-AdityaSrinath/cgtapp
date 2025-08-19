@@ -69,6 +69,24 @@
                     </div>
                 </div>
 
+                <div class="mt-8 pt-6 border-t">
+                    <h3 class="text-xl font-bold mb-4">Insurer Premium Loads (Incidence Only)</h3>
+                    <div class="space-y-6">
+                        <div>
+                            <label for="exp_gross_up" class="block text-md font-semibold text-gray-700">Expectation-Based Gross Up (<span id="exp_gross_up_value">50</span>%)</label>
+                            <input type="range" id="exp_gross_up" min="0.1" max="0.9" step="0.01" value="0.5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div>
+                            <label for="p95_gross_up" class="block text-md font-semibold text-gray-700">95th Percentile-Based Gross Up (<span id="p95_gross_up_value">20</span>%)</label>
+                            <input type="range" id="p95_gross_up" min="0.1" max="0.3" step="0.01" value="0.2" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div>
+                            <label for="p99_gross_up" class="block text-md font-semibold text-gray-700">99th Percentile-Based Gross Up (<span id="p99_gross_up_value">10</span>%)</label>
+                            <input type="range" id="p99_gross_up" min="0.05" max="0.15" step="0.01" value="0.1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="mt-8">
                     <h3 class="text-xl font-bold mb-4">Therapy-Specific Assumptions</h3>
                     <div id="drug-selection" class="space-y-2 border rounded-lg p-2">
@@ -86,8 +104,8 @@
                 <h2 class="text-2xl font-bold mb-6 border-b pb-3">Simulation Results</h2>
                 <div id="results-container" class="text-center">
                      <div class="flex justify-center items-center h-full hidden" id="loader-container">
-                         <div class="loader"></div>
-                         <p class="ml-4 text-gray-600 font-semibold">Running Simulation...</p>
+                          <div class="loader"></div>
+                          <p class="ml-4 text-gray-600 font-semibold">Running Simulation...</p>
                      </div>
                     <div id="results-summary">
                          <p class="text-gray-500">Adjust controls and click "Run Simulation" to see results.</p>
@@ -98,18 +116,18 @@
     </div>
     
     <script>
-        // This function will run when the "Run Simulation" button is clicked
         async function handleRunSimulation() {
             document.getElementById("loader-container").classList.remove("hidden");
             document.getElementById("results-summary").innerHTML = "";
 
-            // 1. Gather GLOBAL inputs from the user interface
             const sample_size_log = parseFloat(document.getElementById("sample_size").value);
             const sample_size = parseInt(10**sample_size_log);
             const pp_deductible = parseInt(document.getElementById("pp_deductible").value);
             const agg_deductible = parseInt(document.getElementById("agg_deductible").value);
+            const exp_gross_up = parseFloat(document.getElementById("exp_gross_up").value);
+            const p95_gross_up = parseFloat(document.getElementById("p95_gross_up").value);
+            const p99_gross_up = parseFloat(document.getElementById("p99_gross_up").value);
             
-            // 2. Gather PER-THERAPY inputs
             const therapy_assumptions = {};
             const drug_divs = document.querySelectorAll('.drug-item');
             drug_divs.forEach(div => {
@@ -128,10 +146,12 @@
                 sample_size: sample_size,
                 pp_deductible: pp_deductible,
                 agg_deductible: agg_deductible,
+                exp_gross_up: exp_gross_up,
+                p95_gross_up: p95_gross_up,
+                p99_gross_up: p99_gross_up,
                 therapy_assumptions: therapy_assumptions 
             };
 
-            // DEBUG: Log the data object that will be sent to the backend
             console.log("Data being sent to backend:", requestData);
 
             try {
@@ -157,8 +177,10 @@
                 resultsDiv.innerHTML = `<p class="text-red-500 font-bold">${results.error}</p>`;
                 return;
             }
-            resultsDiv.innerHTML = `
-                <div class="overflow-x-auto">
+
+            const riskMetricsTable = `
+                <h3 class="text-xl font-bold mb-4 text-left">Risk Metrics</h3>
+                <div class="overflow-x-auto mb-8">
                     <table class="min-w-full bg-white border border-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
@@ -187,10 +209,66 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center font-mono">${results.prevalence.max_mean}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center font-mono">${results.incidence.max_mean}</td>
                             </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">95th Percentile PMPM</td>
+                                <td class="px-6 py-4 text-center text-gray-400 font-mono">-</td>
+                                <td class="px-6 py-4 text-center text-gray-400 font-mono">-</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center font-mono">${results.incidence.p95}</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">99th Percentile PMPM</td>
+                                <td class="px-6 py-4 text-center text-gray-400 font-mono">-</td>
+                                <td class="px-6 py-4 text-center text-gray-400 font-mono">-</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center font-mono">${results.incidence.p99}</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">99.9th Percentile PMPM</td>
+                                <td class="px-6 py-4 text-center text-gray-400 font-mono">-</td>
+                                <td class="px-6 py-4 text-center text-gray-400 font-mono">-</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center font-mono">${results.incidence.p999}</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
             `;
+
+            const premiumTable = `
+                <h3 class="text-xl font-bold mb-4 text-left">Incidence-Based Premium Estimates</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white border border-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Premium Type</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total Premium PMPM</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Expense Load PMPM</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Profit Load PMPM</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Expectation-Based</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 text-center font-mono">${results.incidence.premiums.expectation.total}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center font-mono">${results.incidence.premiums.expectation.expense}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center font-mono">${results.incidence.premiums.expectation.profit}</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">95th Percentile-Based</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 text-center font-mono">${results.incidence.premiums.p95.total}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center font-mono">${results.incidence.premiums.p95.expense}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center font-mono">${results.incidence.premiums.p95.profit}</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">99th Percentile-Based</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 text-center font-mono">${results.incidence.premiums.p99.total}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center font-mono">${results.incidence.premiums.p99.expense}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center font-mono">${results.incidence.premiums.p99.profit}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            resultsDiv.innerHTML = riskMetricsTable + premiumTable;
         }
 
         function setupFrontend() {
@@ -263,7 +341,10 @@
                 });
             });
 
-            const sliderIds = ["sample_size", "pp_deductible", "agg_deductible"];
+            const sliderIds = [
+                "sample_size", "pp_deductible", "agg_deductible",
+                "exp_gross_up", "p95_gross_up", "p99_gross_up"
+            ];
             sliderIds.forEach(sliderId => {
                 const slider = document.getElementById(sliderId);
                 const valueSpan = document.getElementById(`${sliderId}_value`);
@@ -272,6 +353,8 @@
                         const logVal = parseFloat(slider.value);
                         const linearVal = Math.pow(10, logVal);
                         valueSpan.innerText = `${Math.round(linearVal).toLocaleString()}`;
+                    } else if (slider.id.includes("gross_up")) {
+                        valueSpan.innerText = `${Math.round(parseFloat(slider.value) * 100)}`;
                     } else {
                         valueSpan.innerText = `${parseInt(slider.value).toLocaleString()}`;
                     }

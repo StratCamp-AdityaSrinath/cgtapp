@@ -46,24 +46,59 @@ Age,Total_Population,Male_Population,Female_Population
 85+,5000000,2000000,3000000
 """
 
-def run_full_simulation(drug_keys_to_include, sample_size, pp_deductible, agg_deductible, therapy_assumptions):
-    # --- DEBUG LOG 1: Check inputs to this function ---
-    print("--- run_full_simulation ---", file=sys.stderr)
-    print(f"DEBUG: drug_keys_to_include received: {drug_keys_to_include}", file=sys.stderr)
-    print(f"DEBUG: Type of drug_keys_to_include: {type(drug_keys_to_include)}", file=sys.stderr)
+def calculate_stats(df_col, lambda_sum):
+    mean, std = df_col.mean(), df_col.std()
+    if mean < 1e-9:
+        is_extreme = lambda_sum > 1e-9
+        return {
+            "mean": "$0.0000",
+            "cv": "Extreme" if is_extreme else "0.0%",
+            "max_mean": "Extreme" if is_extreme else "0.0%"
+        }
+    cv = (std / mean) if mean > 0 else 0
+    max_mean = (df_col.max() / mean) if mean > 0 else 0
+    return {"mean": f"${mean:.4f}", "cv": f"{cv:.1%}", "max_mean": f"{max_mean:.1%}"}
+
+def calculate_incidence_stats_and_premiums(df_col, lambda_sum, exp_gross_up, p95_gross_up, p99_gross_up):
+    # Base stats
+    base_stats = calculate_stats(df_col, lambda_sum)
     
+    # VaR Calculations
+    p95 = df_col.quantile(0.95)
+    p99 = df_col.quantile(0.99)
+    p999 = df_col.quantile(0.999)
+    base_stats['p95'] = f"${p95:.4f}"
+    base_stats['p99'] = f"${p99:.4f}"
+    base_stats['p999'] = f"${p999:.4f}"
+
+    # Premium Calculations
+    mean_val = df_col.mean()
+    
+    def get_premium_breakdown(base_pmpm, gross_up_rate):
+        profit_load = base_pmpm * (gross_up_rate / 3.0)
+        expense_load = base_pmpm * (2.0 * gross_up_rate / 3.0)
+        total_premium = base_pmpm + profit_load + expense_load
+        return {
+            "total": f"${total_premium:.4f}",
+            "expense": f"${expense_load:.4f}",
+            "profit": f"${profit_load:.4f}"
+        }
+
+    base_stats['premiums'] = {
+        'expectation': get_premium_breakdown(mean_val, exp_gross_up),
+        'p95': get_premium_breakdown(p95, p95_gross_up),
+        'p99': get_premium_breakdown(p99, p99_gross_up)
+    }
+    
+    return base_stats
+
+
+def run_full_simulation(drug_keys_to_include, sample_size, pp_deductible, agg_deductible, therapy_assumptions, exp_gross_up, p95_gross_up, p99_gross_up):
     disease_data_full = pd.read_csv(StringIO(DISEASE_DATA_STRING))
     population_data = pd.read_csv(StringIO(POPULATION_DATA_STRING))
     
-    # --- DEBUG LOG 2: Check the master data and its key ---
-    print(f"DEBUG: disease_data_full 'Key' column dtype: {disease_data_full['Key'].dtype}", file=sys.stderr)
-    print(f"DEBUG: disease_data_full 'Key' values: {disease_data_full['Key'].tolist()}", file=sys.stderr)
-    
-    # --- The point of failure is likely here ---
+    # Filter for selected therapies
     disease_data = disease_data_full[disease_data_full['Key'].isin(drug_keys_to_include)].copy()
-    
-    # --- DEBUG LOG 3: Check the result of the filtering operation ---
-    print(f"DEBUG: Shape of disease_data after filtering: {disease_data.shape}", file=sys.stderr)
     
     if disease_data.empty: 
         return {"error": "No therapies were selected or received by the server."}
@@ -72,6 +107,7 @@ def run_full_simulation(drug_keys_to_include, sample_size, pp_deductible, agg_de
     us_population_total = population_data['Total_Population'].sum()
     n_iterations = 1000
 
+    # Calculate lambdas (expected number of cases)
     lambdas = {}
     pop_age_indexed = population_data.set_index('Age_Value')
     pop_totals = {
@@ -81,26 +117,24 @@ def run_full_simulation(drug_keys_to_include, sample_size, pp_deductible, agg_de
     }
     for _, row in disease_data.iterrows():
         key = row['Key']
-        segment, denominator_pop = row['Segment'], pop_totals.get(row['Segment'], us_population_total)
+        denominator_pop = pop_totals.get(row['Segment'], us_population_total)
         total_nat_cases_inc = row['Incidence_2025'] * denominator_pop
         total_nat_cases_prev = row['Prevalence_2025'] * denominator_pop
-        age_min, age_max, median_age = row['Age_Min'], row['Age_Max'], row['Median_Age_Diagnosis']
-        all_ages = pop_age_indexed.index.values
-        sigma, mu = 0.6, np.log(median_age) if median_age > 0 else 0
-        with np.errstate(divide='ignore'): log_ages = np.log(all_ages)
-        log_ages[all_ages == 0] = 0
-        weights = np.exp(-((log_ages - mu)**2) / (2 * sigma**2))
-        if np.sum(weights) > 0: weights /= np.sum(weights)
-        cases_per_age_inc = total_nat_cases_inc * weights
-        cases_per_age_prev = total_nat_cases_prev * weights
-        commercial_age_mask = (all_ages >= age_min) & (all_ages <= age_max)
-        commercially_relevant_cases_inc = np.sum(cases_per_age_inc[commercial_age_mask])
-        commercially_relevant_cases_prev = np.sum(cases_per_age_prev[commercial_age_mask])
+        
+        # Simplified age weighting for this example
+        age_min, age_max = row['Age_Min'], row['Age_Max']
+        age_mask = (population_data['Age_Value'] >= age_min) & (population_data['Age_Value'] <= age_max)
+        relevant_pop = population_data[age_mask][f"{row['Segment']}_Population"].sum() if row['Segment'] != 'Total Population' else population_data[age_mask]['Total_Population'].sum()
+        
+        commercially_relevant_cases_inc = total_nat_cases_inc * (relevant_pop / denominator_pop if denominator_pop > 0 else 0)
+        commercially_relevant_cases_prev = total_nat_cases_prev * (relevant_pop / denominator_pop if denominator_pop > 0 else 0)
+        
         lambdas[key] = {
             'inc': commercially_relevant_cases_inc * (sample_size / us_population_total),
             'prev': commercially_relevant_cases_prev * (sample_size / us_population_total)
         }
 
+    # Monte Carlo Simulation
     results = []
     for i in range(n_iterations):
         total_cost_prev, total_cost_inc = 0, 0
@@ -108,10 +142,13 @@ def run_full_simulation(drug_keys_to_include, sample_size, pp_deductible, agg_de
             drug_key_int = row['Key']
             assumptions = therapy_assumptions[drug_key_int]
             if np.random.rand() >= row['LOA']: continue
+            
             p_survive, elig_share, uptake, undiag_prev = 0.98, assumptions['elig_share'], assumptions['uptake'], assumptions['undiag_prev']
             lambda_prev, lambda_inc = lambdas[row['Key']]['prev'], lambdas[row['Key']]['inc']
+            
             claims_prev = np.random.poisson(lambda_prev * p_survive * elig_share * uptake)
             claims_inc = np.random.poisson(lambda_inc * (1 + undiag_prev) * elig_share * uptake)
+            
             cost = row['Admin_Cost_2025']
             total_cost_prev += claims_prev * np.maximum(0, cost - pp_deductible)
             total_cost_inc += claims_inc * np.maximum(0, cost - pp_deductible)
@@ -119,43 +156,29 @@ def run_full_simulation(drug_keys_to_include, sample_size, pp_deductible, agg_de
         total_cost_pre_agg = total_cost_prev + total_cost_inc
         cost_after_agg = np.maximum(0, total_cost_pre_agg - agg_deductible)
         pmpm_total = cost_after_agg / sample_size / 12 if sample_size > 0 else 0
-        total_cost_after_deduct = total_cost_prev + total_cost_inc
-        pmpm_prev = pmpm_total * (total_cost_prev / total_cost_after_deduct) if total_cost_after_deduct > 0 else 0
-        pmpm_inc = pmpm_total * (total_cost_inc / total_cost_after_deduct) if total_cost_after_deduct > 0 else 0
-        results.append({'pmpm_total': pmpm_total, 'pmpm_prev': pmpm_prev, 'pmpm_inc': pmpm_inc})
         
+        cost_after_pp_deduct = total_cost_prev + total_cost_inc
+        pmpm_prev = pmpm_total * (total_cost_prev / cost_after_pp_deduct) if cost_after_pp_deduct > 0 else 0
+        pmpm_inc = pmpm_total * (total_cost_inc / cost_after_pp_deduct) if cost_after_pp_deduct > 0 else 0
+        results.append({'pmpm_total': pmpm_total, 'pmpm_prev': pmpm_prev, 'pmpm_inc': pmpm_inc})
+            
     results_df = pd.DataFrame(results)
 
-    def calculate_stats(df, col_name, lambda_sum):
-        mean, std = df[col_name].mean(), df[col_name].std()
-        if mean < 1e-9:
-            return {"mean": "$0.0000", "cv": "Extreme", "max_mean": "Extreme"} if lambda_sum > 1e-9 else {"mean": "$0.0000", "cv": "0.0%", "max_mean": "0.0%"}
-        cv = (std / mean) if mean > 0 else 0
-        max_mean = (df[col_name].max() / mean) if mean > 0 else 0
-        return {"mean": f"${mean:.4f}", "cv": f"{cv:.1%}", "max_mean": f"{max_mean:.1%}"}
-
+    # Calculate final stats
     total_lambda_inc = sum(l['inc'] for k, l in lambdas.items())
     total_lambda_prev = sum(l['prev'] for k, l in lambdas.items())
 
     return {
-        "total": calculate_stats(results_df, 'pmpm_total', total_lambda_inc + total_lambda_prev),
-        "prevalence": calculate_stats(results_df, 'pmpm_prev', total_lambda_prev),
-        "incidence": calculate_stats(results_df, 'pmpm_inc', total_lambda_inc),
+        "total": calculate_stats(results_df['pmpm_total'], total_lambda_inc + total_lambda_prev),
+        "prevalence": calculate_stats(results_df['pmpm_prev'], total_lambda_prev),
+        "incidence": calculate_incidence_stats_and_premiums(
+            results_df['pmpm_inc'], total_lambda_inc, exp_gross_up, p95_gross_up, p99_gross_up
+        ),
     }
 
 @app.route('/api/main', methods=['POST'])
 def handle_simulation():
-    # Using print with sys.stderr ensures logs appear on Vercel
-    print("--- handle_simulation ---", file=sys.stderr)
-    
-    # --- DEBUG LOG 4: Check the raw request body ---
-    print(f"DEBUG: Raw request body: {request.data}", file=sys.stderr)
-    
     data = request.get_json()
-    
-    # --- DEBUG LOG 5: Check the parsed JSON data ---
-    print(f"DEBUG: Parsed JSON data: {data}", file=sys.stderr)
-    
     if data is None:
         return jsonify({"error": "Failed to decode JSON. Please check request format."}), 400
 
@@ -163,20 +186,17 @@ def handle_simulation():
     if not therapy_assumptions:
         return jsonify({"error": "No 'therapy_assumptions' provided in the request."}), 400
 
-    # --- DEBUG LOG 6: Check the assumptions dictionary before key conversion ---
-    print(f"DEBUG: therapy_assumptions before conversion: {therapy_assumptions}", file=sys.stderr)
-    
     therapy_assumptions_int_keys = {int(k): v for k, v in therapy_assumptions.items()}
     drug_keys = list(therapy_assumptions_int_keys.keys())
-
-    # --- DEBUG LOG 7: Check the final list of keys being sent to the simulation ---
-    print(f"DEBUG: Final drug_keys list to be used for filtering: {drug_keys}", file=sys.stderr)
     
     results = run_full_simulation(
         drug_keys_to_include=drug_keys,
         sample_size=data.get('sample_size', 100000),
         pp_deductible=data.get('pp_deductible', 0),
         agg_deductible=data.get('agg_deductible', 0),
-        therapy_assumptions=therapy_assumptions_int_keys
+        therapy_assumptions=therapy_assumptions_int_keys,
+        exp_gross_up=data.get('exp_gross_up', 0.50),
+        p95_gross_up=data.get('p95_gross_up', 0.20),
+        p99_gross_up=data.get('p99_gross_up', 0.10)
     )
     return jsonify(results)
